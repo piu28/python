@@ -13,7 +13,7 @@ log.debug('Loading function')
 cw = boto3.client('cloudwatch', region_name='ap-south-1')
 
 # Save the connection status in the CloudWatch Custom Metric
-def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1, ip):
+def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1):
     cw.put_metric_data(
         Namespace='MediassistVPNStatus',
         MetricData=[{
@@ -39,10 +39,6 @@ def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1, i
                 {
                     'Name': 'Tunnel1Status',
                     'Value': tunnel1
-                },
-                {
-                    'Name': 'IP',
-                    'Value': ip
                 }]
         }]
     )
@@ -62,7 +58,6 @@ def lambda_handler(event, context):
             awsregion = region['RegionName']
             vpns = ec2.describe_vpn_connections()['VpnConnections']
             connections = 0
-            ip = 'xx.xx.xxx.xxx' #IP provided in Customer Gateway
             for vpn in vpns:
                 if vpn['State'] == "available":
                     numConnections += 1
@@ -73,7 +68,7 @@ def lambda_handler(event, context):
                     if vpn['VgwTelemetry'][1]['Status'] == "UP":
                         active_tunnels += 1
                     log.info('{} VPN ID: {}, State: {}, Tunnel0: {}, Tunnel1: {} -- {} active tunnels'.format(region['RegionName'], vpn['VpnConnectionId'],vpn['State'],vpn['VgwTelemetry'][0]['Status'],vpn['VgwTelemetry'][1]['Status'], active_tunnels))
-                    putCloudWatchMetric(vpn['VpnConnectionId'], active_tunnels, vpn['VpnGatewayId'], vpn['CustomerGatewayId'], region['RegionName'], vpn['VgwTelemetry'][0]['Status'], vpn['VgwTelemetry'][1]['Status'], ip)
+                    putCloudWatchMetric(vpn['VpnConnectionId'], active_tunnels, vpn['VpnGatewayId'], vpn['CustomerGatewayId'], region['RegionName'], vpn['VgwTelemetry'][0]['Status'], vpn['VgwTelemetry'][1]['Status'])
         except Exception as e:
             log.error("Exception: "+str(e))
             continue
