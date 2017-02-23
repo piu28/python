@@ -13,7 +13,7 @@ log.debug('Loading function')
 cw = boto3.client('cloudwatch', region_name='ap-south-1')
 
 # Save the connection status in the CloudWatch Custom Metric
-def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1):
+def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1, vpnname):
     cw.put_metric_data(
         Namespace='MediassistVPNStatus',
         MetricData=[{
@@ -23,7 +23,7 @@ def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1):
             'Dimensions': [{
                 'Name': 'VGW',
                 'Value': vgw
-            },
+                },
                 {
                     'Name': 'CGW',
                     'Value': cgw
@@ -39,6 +39,10 @@ def putCloudWatchMetric(metricName, value, vgw, cgw, region, tunnel0, tunnel1):
                 {
                     'Name': 'Tunnel1Status',
                     'Value': tunnel1
+                },
+                {
+                    'Name': 'VPNName',
+                    'Value': vpnname
                 }]
         }]
     )
@@ -60,6 +64,7 @@ def lambda_handler(event, context):
             connections = 0
             for vpn in vpns:
                 if vpn['State'] == "available":
+                    vpnname = vpn['Tags'][0]['Value']
                     numConnections += 1
                     connections += 1
                     active_tunnels = 0
@@ -68,7 +73,7 @@ def lambda_handler(event, context):
                     if vpn['VgwTelemetry'][1]['Status'] == "UP":
                         active_tunnels += 1
                     log.info('{} VPN ID: {}, State: {}, Tunnel0: {}, Tunnel1: {} -- {} active tunnels'.format(region['RegionName'], vpn['VpnConnectionId'],vpn['State'],vpn['VgwTelemetry'][0]['Status'],vpn['VgwTelemetry'][1]['Status'], active_tunnels))
-                    putCloudWatchMetric(vpn['VpnConnectionId'], active_tunnels, vpn['VpnGatewayId'], vpn['CustomerGatewayId'], region['RegionName'], vpn['VgwTelemetry'][0]['Status'], vpn['VgwTelemetry'][1]['Status'])
+                    putCloudWatchMetric(vpn['VpnConnectionId'], active_tunnels, vpn['VpnGatewayId'], vpn['CustomerGatewayId'], region['RegionName'], vpn['VgwTelemetry'][0]['Status'], vpn['VgwTelemetry'][1]['Status'], vpnname)
         except Exception as e:
             log.error("Exception: "+str(e))
             continue
